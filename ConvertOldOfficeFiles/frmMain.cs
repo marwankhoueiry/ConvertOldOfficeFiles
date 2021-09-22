@@ -1,37 +1,21 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
+using System.Linq;
 using System.Windows.Forms;
-using NetOffice.OfficeApi;
-using NetOffice.WordApi.Enums;
-using Application = NetOffice.ExcelApi.Application;
 
 namespace ConvertOldOfficeFiles
 {
-    public partial class frmMain : Form
+    public partial class FrmMain : Form
     {
-        private readonly Application excel;
-        private int fileCount;
-        private readonly NetOffice.WordApi.Application word;
+        private int _fileCount;
 
-        public frmMain()
+        public FrmMain()
         {
             InitializeComponent();
-
-            // Create window title
-            Text = Assembly.GetExecutingAssembly().GetName().Name + " Version " +
-                   Assembly.GetExecutingAssembly().GetName().Version;
-
-            // Create Excel COM object instance
-            excel = new Application();
-            excel.Visible = false;
-            excel.DisplayAlerts = false;
-
-            // Create Word COM object instance
-            word = new NetOffice.WordApi.Application();
-            word.Visible = false;
-            word.DisplayAlerts = WdAlertLevel.wdAlertsNone;
         }
+
+        public sealed override string Text { get; set; } =
+            Application.ProductName + " Version " + Application.ProductVersion;
 
         private void ConvertPath(string path, bool bConvert)
         {
@@ -45,26 +29,24 @@ namespace ConvertOldOfficeFiles
                 foreach (var fileName in fileNames)
                 {
                     var ext = Path.GetExtension(fileName);
-                    if (Path.GetExtension(fileName) == ".xls")
+                    if (Path.GetExtension(fileName) != ".xls") continue;
+                    // Check if the file is a file with Office 2003 format (header check)
+                    if (!IsOldOfficeFormat(fileName))
                     {
-                        // Check if the file is a file with Office 2003 format (header check)
-                        if (!IsOldOfficeFormat(fileName))
-                        {
-                            tbOutput.AppendText("Error: the file " + fileName +
-                                                " has a wrong format and therefore will not be converted !" +
-                                                Environment.NewLine);
-                            continue;
-                        }
+                        tbOutput.AppendText("Error: the file " + fileName +
+                                            " has a wrong format and therefore will not be converted !" +
+                                            Environment.NewLine);
+                        continue;
+                    }
 
-                        if (bConvert)
-                        {
-                            ConvertXLS(fileName);
-                        }
-                        else
-                        {
-                            tbOutput.AppendText(fileName + Environment.NewLine);
-                            fileCount++;
-                        }
+                    if (bConvert)
+                    {
+                        ConvertXls(fileName);
+                    }
+                    else
+                    {
+                        tbOutput.AppendText(fileName + Environment.NewLine);
+                        _fileCount++;
                     }
                 }
 
@@ -84,12 +66,12 @@ namespace ConvertOldOfficeFiles
 
                         if (bConvert)
                         {
-                            ConvertDOC(fileName);
+                            ConvertDoc(fileName);
                         }
                         else
                         {
                             tbOutput.AppendText(fileName + Environment.NewLine);
-                            fileCount++;
+                            _fileCount++;
                         }
                     }
 
@@ -103,29 +85,19 @@ namespace ConvertOldOfficeFiles
             }
         }
 
-        private void ConvertXLS(string fileName)
+        private void ConvertXls(string fileName)
         {
             var saveFileName = fileName.Replace(".xls", ".xlsx");
 
             try
             {
                 // Load Excel worksheet
-                var wb = excel.Workbooks.Open(fileName);
+                var wb = COMHandler.OpenExcelDocument(fileName);
 
                 try
                 {
-                    // Read author
-                    var properties = (DocumentProperties)wb.BuiltinDocumentProperties;
-                    var author = "";
-                    foreach (var p in properties)
-                        if (p.Name == "Author")
-                            author = p.Value.ToString();
-                    //MessageBox.Show(author);
-
                     // Check if the file contains macro code
-                    var linesOfCode = 0;
-                    foreach (var component in wb.VBProject.VBComponents)
-                        linesOfCode += component.CodeModule.CountOfLines;
+                    var linesOfCode = wb.VBProject.VBComponents.Sum(component => component.CodeModule.CountOfLines);
 
                     // A file containing macros must have a different target format / file extension
                     if (linesOfCode > 0)
@@ -142,7 +114,7 @@ namespace ConvertOldOfficeFiles
                         wb.SaveAs(saveFileName, 51);
                     }
 
-                    fileCount++;
+                    _fileCount++;
                 }
                 catch (Exception ex)
                 {
@@ -167,14 +139,14 @@ namespace ConvertOldOfficeFiles
             }
         }
 
-        private void ConvertDOC(string fileName)
+        private void ConvertDoc(string fileName)
         {
             var saveFileName = fileName.Replace(".doc", ".docx");
 
             try
             {
                 // Load Word document
-                var doc = word.Documents.Open(fileName);
+                var doc = COMHandler.OpenWordDocument(fileName);
 
                 try
                 {
@@ -198,7 +170,7 @@ namespace ConvertOldOfficeFiles
                         doc.SaveAs2(saveFileName, 16);
                     }
 
-                    fileCount++;
+                    _fileCount++;
                 }
                 catch (Exception ex)
                 {
@@ -226,29 +198,27 @@ namespace ConvertOldOfficeFiles
         private void btConvert_Click(object sender, EventArgs e)
         {
             var path = tbPath.Text.Trim();
-            if (path.Length > 0 && Directory.Exists(path))
-            {
-                tbOutput.Clear();
-                fileCount = 0;
-                ConvertPath(path, true);
-                statusLabel.Text = "Ready";
-                Cursor.Current = Cursors.Default;
-                tbOutput.AppendText(fileCount + " files converted" + Environment.NewLine);
-            }
+            if (path.Length <= 0 || !Directory.Exists(path)) return;
+            
+            tbOutput.Clear();
+            _fileCount = 0;
+            ConvertPath(path, true);
+            statusLabel.Text = "Ready";
+            Cursor.Current = Cursors.Default;
+            tbOutput.AppendText(_fileCount + " files converted" + Environment.NewLine);
         }
 
         private void btCheck_Click(object sender, EventArgs e)
         {
             var path = tbPath.Text.Trim();
-            if (path.Length > 0 && Directory.Exists(path))
-            {
-                tbOutput.Clear();
-                fileCount = 0;
-                ConvertPath(path, false);
-                statusLabel.Text = "Ready";
-                Cursor.Current = Cursors.Default;
-                tbOutput.AppendText(fileCount + " files found" + Environment.NewLine);
-            }
+            if (path.Length <= 0 || !Directory.Exists(path)) return;
+            
+            tbOutput.Clear();
+            _fileCount = 0;
+            ConvertPath(path, false);
+            statusLabel.Text = "Ready";
+            Cursor.Current = Cursors.Default;
+            tbOutput.AppendText(_fileCount + " files found" + Environment.NewLine);
         }
 
         private void frmMain_Shown(object sender, EventArgs e)
@@ -258,7 +228,17 @@ namespace ConvertOldOfficeFiles
 
         private void btSelectPath_Click(object sender, EventArgs e)
         {
-            var dlg = new FolderBrowserDialog();
+            var dlg = new FolderBrowserDialog
+            {
+                Site = null,
+                Tag = null,
+                AutoUpgradeEnabled = false,
+                ShowNewFolderButton = false,
+                SelectedPath = null,
+                RootFolder = Environment.SpecialFolder.Desktop,
+                Description = null,
+                UseDescriptionForTitle = false
+            };
             dlg.Description = "Select directory to be converted";
             if (dlg.ShowDialog() == DialogResult.OK)
                 tbPath.Text = dlg.SelectedPath;
@@ -274,17 +254,15 @@ namespace ConvertOldOfficeFiles
 
                 // We're reading the first 512 Bytes of the file
                 var buffer = new byte[512];
-                using (var fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
-                {
-                    // If the file does not contain at least the header it can't be a file in an old Office 2003 format
-                    if (fs.Read(buffer, 0, buffer.Length) < header.Length)
-                        return false;
+                using var fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+                // If the file does not contain at least the header it can't be a file in an old Office 2003 format
+                if (fs.Read(buffer, 0, buffer.Length) < header.Length)
+                    return false;
 
-                    // Check if the files begins with an Office 2003 header
-                    for (var i = 0; i < header.Length; i++)
-                        if (buffer[i] != header[i])
-                            bIsOldFormat = false;
-                }
+                // Check if the files begins with an Office 2003 header
+                for (var i = 0; i < header.Length; i++)
+                    if (buffer[i] != header[i])
+                        bIsOldFormat = false;
             }
             catch (Exception ex)
             {
@@ -292,17 +270,6 @@ namespace ConvertOldOfficeFiles
             }
 
             return bIsOldFormat;
-        }
-
-        private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            // Clear Excel COM object
-            excel.Quit();
-            excel.Dispose();
-
-            // Clear Word COM object
-            word.Quit();
-            word.Dispose();
         }
     }
 }
