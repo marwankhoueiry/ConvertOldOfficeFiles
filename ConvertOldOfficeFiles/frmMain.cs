@@ -1,25 +1,29 @@
 ﻿using System;
 using System.IO;
-using System.Windows.Forms;
 using System.Reflection;
+using System.Windows.Forms;
+using NetOffice.OfficeApi;
 using NetOffice.WordApi.Enums;
+using Application = NetOffice.ExcelApi.Application;
 
 namespace ConvertOldOfficeFiles
 {
     public partial class frmMain : Form
     {
-        private NetOffice.ExcelApi.Application excel;
-        private NetOffice.WordApi.Application word;
-        private int fileCount = 0;
+        private readonly Application excel;
+        private int fileCount;
+        private readonly NetOffice.WordApi.Application word;
+
         public frmMain()
         {
             InitializeComponent();
-            
+
             // Create window title
-            this.Text = Assembly.GetExecutingAssembly().GetName().Name + " Version " + Assembly.GetExecutingAssembly().GetName().Version;
-            
+            Text = Assembly.GetExecutingAssembly().GetName().Name + " Version " +
+                   Assembly.GetExecutingAssembly().GetName().Version;
+
             // Create Excel COM object instance
-            excel = new NetOffice.ExcelApi.Application();
+            excel = new Application();
             excel.Visible = false;
             excel.DisplayAlerts = false;
 
@@ -29,29 +33,33 @@ namespace ConvertOldOfficeFiles
             word.DisplayAlerts = WdAlertLevel.wdAlertsNone;
         }
 
-        private void ConvertPath (string path, bool bConvert)
+        private void ConvertPath(string path, bool bConvert)
         {
             try
             {
                 // Search for Excel files with an old office format and convert them into the new office OpenXML format
-                string[] fileNames = Directory.GetFiles(path, "*.xls");
+                var fileNames = Directory.GetFiles(path, "*.xls");
                 statusLabel.Text = path;
-                Application.DoEvents();
+                System.Windows.Forms.Application.DoEvents();
                 Cursor.Current = Cursors.WaitCursor;
-                foreach (string fileName in fileNames)
+                foreach (var fileName in fileNames)
                 {
-                    string ext = Path.GetExtension(fileName);
+                    var ext = Path.GetExtension(fileName);
                     if (Path.GetExtension(fileName) == ".xls")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
                         {
-                            tbOutput.AppendText("Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
+                            tbOutput.AppendText("Error: the file " + fileName +
+                                                " has a wrong format and therefore will not be converted !" +
+                                                Environment.NewLine);
                             continue;
                         }
 
                         if (bConvert)
+                        {
                             ConvertXLS(fileName);
+                        }
                         else
                         {
                             tbOutput.AppendText(fileName + Environment.NewLine);
@@ -62,57 +70,61 @@ namespace ConvertOldOfficeFiles
 
                 // Search for Word files with an old office format and convert them into the new office OpenXML format
                 fileNames = Directory.GetFiles(path, "*.doc");
-                foreach (string fileName in fileNames)
-                {
+                foreach (var fileName in fileNames)
                     if (Path.GetExtension(fileName) == ".doc")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
                         {
-                            tbOutput.AppendText("Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
+                            tbOutput.AppendText("Error: the file " + fileName +
+                                                " has a wrong format and therefore will not be converted !" +
+                                                Environment.NewLine);
                             continue;
                         }
 
                         if (bConvert)
+                        {
                             ConvertDOC(fileName);
+                        }
                         else
                         {
                             tbOutput.AppendText(fileName + Environment.NewLine);
                             fileCount++;
                         }
                     }
-                }
 
                 // Now we have to search the sub dirs recursively
-                string[] dirs = Directory.GetDirectories(path);
-                foreach (string dir in dirs)
+                var dirs = Directory.GetDirectories(path);
+                foreach (var dir in dirs)
                     ConvertPath(dir, bConvert);
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         private void ConvertXLS(string fileName)
         {
-            string saveFileName = fileName.Replace(".xls",".xlsx");
-            
+            var saveFileName = fileName.Replace(".xls", ".xlsx");
+
             try
             {
                 // Load Excel worksheet
-                NetOffice.ExcelApi.Workbook wb = excel.Workbooks.Open(fileName);
+                var wb = excel.Workbooks.Open(fileName);
 
                 try
                 {
                     // Read author
-                    NetOffice.OfficeApi.DocumentProperties properties = (NetOffice.OfficeApi.DocumentProperties)wb.BuiltinDocumentProperties;
-                    string author = "";
-                    foreach (NetOffice.OfficeApi.DocumentProperty p in properties)
+                    var properties = (DocumentProperties)wb.BuiltinDocumentProperties;
+                    var author = "";
+                    foreach (var p in properties)
                         if (p.Name == "Author")
                             author = p.Value.ToString();
                     //MessageBox.Show(author);
 
                     // Check if the file contains macro code
-                    int linesOfCode = 0;
-                    foreach (NetOffice.VBIDEApi.VBComponent component in wb.VBProject.VBComponents)
+                    var linesOfCode = 0;
+                    foreach (var component in wb.VBProject.VBComponents)
                         linesOfCode += component.CodeModule.CountOfLines;
 
                     // A file containing macros must have a different target format / file extension
@@ -129,6 +141,7 @@ namespace ConvertOldOfficeFiles
                         // Save in OpenXML format without macros  (see https://docs.microsoft.com/de-de/office/vba/api/excel.xlfileformat)
                         wb.SaveAs(saveFileName, 51);
                     }
+
                     fileCount++;
                 }
                 catch (Exception ex)
@@ -141,7 +154,7 @@ namespace ConvertOldOfficeFiles
                 wb.DisposeChildInstances();
 
                 // Reset the timestamp for "date modified" for the new created file
-                FileInfo fi = new FileInfo(fileName);
+                var fi = new FileInfo(fileName);
                 File.SetLastWriteTime(saveFileName, fi.LastWriteTime);
                 File.SetCreationTime(saveFileName, fi.CreationTime);
 
@@ -153,20 +166,21 @@ namespace ConvertOldOfficeFiles
                 MessageBox.Show(ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         private void ConvertDOC(string fileName)
         {
-            string saveFileName = fileName.Replace(".doc", ".docx");
+            var saveFileName = fileName.Replace(".doc", ".docx");
 
             try
             {
                 // Load Word document
-                NetOffice.WordApi.Document doc = word.Documents.Open(fileName);
+                var doc = word.Documents.Open(fileName);
 
                 try
                 {
                     // Check if the file contains macro code
-                    int linesOfCode = 0;
-                    foreach (NetOffice.VBIDEApi.VBComponent component in doc.VBProject.VBComponents)
+                    var linesOfCode = 0;
+                    foreach (var component in doc.VBProject.VBComponents)
                         linesOfCode += component.CodeModule.CountOfLines;
 
                     // A file containing macros must have a different target format / file extension
@@ -183,6 +197,7 @@ namespace ConvertOldOfficeFiles
                         // Save in OpenXML format without macros (see https://docs.microsoft.com/de-de/office/vba/api/word.wdsaveformat)
                         doc.SaveAs2(saveFileName, 16);
                     }
+
                     fileCount++;
                 }
                 catch (Exception ex)
@@ -195,7 +210,7 @@ namespace ConvertOldOfficeFiles
                 doc.DisposeChildInstances();
 
                 // Reset the timestamp for "date modified" for the new created file
-                FileInfo fi = new FileInfo(fileName);
+                var fi = new FileInfo(fileName);
                 File.SetLastWriteTime(saveFileName, fi.LastWriteTime);
                 File.SetCreationTime(saveFileName, fi.CreationTime);
 
@@ -210,7 +225,7 @@ namespace ConvertOldOfficeFiles
 
         private void btConvert_Click(object sender, EventArgs e)
         {
-            string path = tbPath.Text.Trim();
+            var path = tbPath.Text.Trim();
             if (path.Length > 0 && Directory.Exists(path))
             {
                 tbOutput.Clear();
@@ -224,7 +239,7 @@ namespace ConvertOldOfficeFiles
 
         private void btCheck_Click(object sender, EventArgs e)
         {
-            string path = tbPath.Text.Trim();
+            var path = tbPath.Text.Trim();
             if (path.Length > 0 && Directory.Exists(path))
             {
                 tbOutput.Clear();
@@ -243,30 +258,30 @@ namespace ConvertOldOfficeFiles
 
         private void btSelectPath_Click(object sender, EventArgs e)
         {
-            FolderBrowserDialog dlg = new FolderBrowserDialog();
+            var dlg = new FolderBrowserDialog();
             dlg.Description = "Select directory to be converted";
             if (dlg.ShowDialog() == DialogResult.OK)
                 tbPath.Text = dlg.SelectedPath;
         }
 
-        private bool IsOldOfficeFormat (string fileName)
+        private bool IsOldOfficeFormat(string fileName)
         {
-            bool bIsOldFormat = true;
+            var bIsOldFormat = true;
             try
             {
                 // Header check, see https://www.loc.gov/preservation/digital/formats/fdd/fdd000509.shtml
                 byte[] header = { 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 };
 
                 // We're reading the first 512 Bytes of the file
-                byte[] buffer = new byte[512];
-                using (FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+                var buffer = new byte[512];
+                using (var fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
                 {
                     // If the file does not contain at least the header it can't be a file in an old Office 2003 format
                     if (fs.Read(buffer, 0, buffer.Length) < header.Length)
                         return false;
 
                     // Check if the files begins with an Office 2003 header
-                    for (int i = 0; i < header.Length; i++)
+                    for (var i = 0; i < header.Length; i++)
                         if (buffer[i] != header[i])
                             bIsOldFormat = false;
                 }

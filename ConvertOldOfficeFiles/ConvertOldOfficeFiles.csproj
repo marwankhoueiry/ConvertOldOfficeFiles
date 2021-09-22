@@ -5,12 +5,26 @@
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <StartupObject>ConvertOldOfficeFiles.Program</StartupObject>
+    <PackageProjectUrl>https://github.com/bdegel/ConvertOldOfficeFiles</PackageProjectUrl>
+    <PackageIcon>Convert-File.ico</PackageIcon>
+    <PackageIconUrl />
+    <RepositoryUrl>https://github.com/bdegel/ConvertOldOfficeFiles</RepositoryUrl>
+    <PackageLicenseExpression>https://github.com/bdegel/ConvertOldOfficeFiles/blob/master/LICENSE</PackageLicenseExpression>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NetOffice.Core" Version="1.7.4.11" />
     <PackageReference Include="NetOffice.Excel" Version="1.7.4.11" />
     <PackageReference Include="NetOffice.Word" Version="1.7.4.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Convert-File.ico">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
