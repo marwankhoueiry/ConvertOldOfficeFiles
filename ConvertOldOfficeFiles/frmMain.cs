@@ -2,18 +2,14 @@
 using System.IO;
 using System.Windows.Forms;
 using System.Reflection;
-using Office = NetOffice.OfficeApi;
-using Excel = NetOffice.ExcelApi;
-using NetOffice.ExcelApi.Enums;
-using Word = NetOffice.WordApi;
 using NetOffice.WordApi.Enums;
 
 namespace ConvertOldOfficeFiles
 {
     public partial class frmMain : Form
     {
-        private Excel.Application excel;
-        private Word.Application word;
+        private NetOffice.ExcelApi.Application excel;
+        private NetOffice.WordApi.Application word;
         private int fileCount = 0;
         public frmMain()
         {
@@ -23,12 +19,12 @@ namespace ConvertOldOfficeFiles
             this.Text = Assembly.GetExecutingAssembly().GetName().Name + " Version " + Assembly.GetExecutingAssembly().GetName().Version;
             
             // Create Excel COM object instance
-            excel = new Excel.Application();
+            excel = new NetOffice.ExcelApi.Application();
             excel.Visible = false;
             excel.DisplayAlerts = false;
 
             // Create Word COM object instance
-            word = new Word.Application();
+            word = new NetOffice.WordApi.Application();
             word.Visible = false;
             word.DisplayAlerts = WdAlertLevel.wdAlertsNone;
         }
@@ -102,7 +98,7 @@ namespace ConvertOldOfficeFiles
             try
             {
                 // Load Excel worksheet
-                Excel.Workbook wb = excel.Workbooks.Open(fileName);
+                NetOffice.ExcelApi.Workbook wb = excel.Workbooks.Open(fileName);
 
                 try
                 {
@@ -164,7 +160,7 @@ namespace ConvertOldOfficeFiles
             try
             {
                 // Load Word document
-                Word.Document doc = word.Documents.Open(fileName);
+                NetOffice.WordApi.Document doc = word.Documents.Open(fileName);
 
                 try
                 {
