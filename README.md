@@ -1,6 +1,10 @@
 # ConvertOldOfficeFiles
+<p align="center"></br>
+  <img src="https://github.com/bdegel/ConvertOldOfficeFiles/blob/master/ConvertOldOfficeFiles/Convert-File.ico" alt="Logo"/></br>
+  <b>Convert Excel and Word files in old Office 2003 format to the new OpenXML format</b></br>
+</p>
 
-Convert Excel and Word files in old Office 2003 format automatically to the new OpenXML format
+![example branch parameter](https://github.com/bdegel/ConvertOldOfficeFiles/actions/workflows/ci.yml/badge.svg?branch=master)
 
 This is my first github project, so please bear with me...
 
@@ -11,7 +15,6 @@ The tool let you scan a given directory and all its subdirectories for files lik
 I hope this tiny tool will be useful for anybody else in a similar situation.
 
 ## Prerequisites
-
 For this to work you will have to enable access to the VBA project model in the MS Office Trust Center:
 Open any MS Office application and navigate to the following option page:
 File > Options > Trust Center > Trust Center Settings...
