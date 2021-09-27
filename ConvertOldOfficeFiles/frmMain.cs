@@ -2,9 +2,7 @@
 using System.IO;
 using System.Windows.Forms;
 using System.Reflection;
-using Office = NetOffice.OfficeApi;
 using Excel = NetOffice.ExcelApi;
-using NetOffice.ExcelApi.Enums;
 using Word = NetOffice.WordApi;
 using NetOffice.WordApi.Enums;
 
@@ -13,7 +11,7 @@ namespace ConvertOldOfficeFiles
     public partial class frmMain : Form
     {
         private Excel.Application excel;
-        private Word.Application word;
+        private Word.Application word; 
         private int fileCount = 0;
         public frmMain()
         {
@@ -116,8 +114,17 @@ namespace ConvertOldOfficeFiles
 
                     // Check if the file contains macro code
                     int linesOfCode = 0;
-                    foreach (NetOffice.VBIDEApi.VBComponent component in wb.VBProject.VBComponents)
-                        linesOfCode += component.CodeModule.CountOfLines;
+                    try
+                    {
+                        foreach (NetOffice.VBIDEApi.VBComponent component in wb.VBProject.VBComponents)
+                            linesOfCode += component.CodeModule.CountOfLines;
+                    }
+                    catch
+                    {
+                        // Access to VBA object model ist not trusted, see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445
+                        tbOutput.AppendText("Error converting " + fileName + ": please enable access to the VBA object model within Excel (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
+                        return;
+                    }
 
                     // A file containing macros must have a different target format / file extension
                     if (linesOfCode > 0)
@@ -170,8 +177,17 @@ namespace ConvertOldOfficeFiles
                 {
                     // Check if the file contains macro code
                     int linesOfCode = 0;
-                    foreach (NetOffice.VBIDEApi.VBComponent component in doc.VBProject.VBComponents)
-                        linesOfCode += component.CodeModule.CountOfLines;
+                    try
+                    {
+                        foreach (NetOffice.VBIDEApi.VBComponent component in doc.VBProject.VBComponents)
+                            linesOfCode += component.CodeModule.CountOfLines;
+                    }
+                    catch
+                    {
+                        // Access to VBA object model ist not trusted, see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445
+                        tbOutput.AppendText("Error converting " + fileName + ": please enable access to the VBA object model within Word (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
+                        return;
+                    }
 
                     // A file containing macros must have a different target format / file extension
                     if (linesOfCode > 0)
