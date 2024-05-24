@@ -10,9 +10,10 @@ namespace ConvertOldOfficeFiles
 {
     public partial class frmMain : Form
     {
-        private Excel.Application excel;
-        private Word.Application word; 
+        private Excel.Application excel = null;
+        private Word.Application word = null; 
         private int fileCount = 0;
+        private bool bExit = false;
         public frmMain()
         {
             InitializeComponent();
@@ -20,15 +21,23 @@ namespace ConvertOldOfficeFiles
             // Create window title
             this.Text = Assembly.GetExecutingAssembly().GetName().Name + " Version " + Assembly.GetExecutingAssembly().GetName().Version;
             
-            // Create Excel COM object instance
-            excel = new Excel.Application();
-            excel.Visible = false;
-            excel.DisplayAlerts = false;
+            try
+            {
+                // Create Excel COM object instance
+                excel = new Excel.Application();
+                excel.Visible = false;
+                excel.DisplayAlerts = false;
 
-            // Create Word COM object instance
-            word = new Word.Application();
-            word.Visible = false;
-            word.DisplayAlerts = WdAlertLevel.wdAlertsNone;
+                try
+                {
+                    // Create Word COM object instance
+                    word = new Word.Application();
+                    word.Visible = false;
+                    word.DisplayAlerts = WdAlertLevel.wdAlertsNone;
+                }
+                catch { bExit = true; MessageBox.Show("Could not start a Word object instance on this computer", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            }
+            catch { bExit = true; MessageBox.Show("Could not start an Excel object instance on this computer", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         }
 
         private void ConvertPath (string path, bool bConvert)
@@ -43,7 +52,7 @@ namespace ConvertOldOfficeFiles
                 foreach (string fileName in fileNames)
                 {
                     string ext = Path.GetExtension(fileName);
-                    if (Path.GetExtension(fileName) == ".xls")
+                    if (Path.GetExtension(fileName).ToLower() == ".xls")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
@@ -66,7 +75,7 @@ namespace ConvertOldOfficeFiles
                 fileNames = Directory.GetFiles(path, "*.doc");
                 foreach (string fileName in fileNames)
                 {
-                    if (Path.GetExtension(fileName) == ".doc")
+                    if (Path.GetExtension(fileName).ToLower() == ".doc")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
@@ -302,12 +311,26 @@ namespace ConvertOldOfficeFiles
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Clear Excel COM object
-            excel.Quit();
-            excel.Dispose();
+            if (excel != null)
+            {
+                try
+                {
+                    excel.Quit();
+                    excel.Dispose();
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message, "Error while disposing Excel object instance", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            }
 
             // Clear Word COM object
-            word.Quit();
-            word.Dispose();
+            if (word != null)
+            {
+                try
+                {
+                    word.Quit();
+                    word.Dispose();
+                }
+                catch (Exception ex) { MessageBox.Show(ex.Message, "Error while disposing Word object instance", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            }
         }
     }
 }
