@@ -93,11 +93,16 @@ namespace ConvertOldOfficeFiles
                         }
                     }
                 }
+                string[] dirs;
 
-                // Now we have to search the sub dirs recursively
-                string[] dirs = Directory.GetDirectories(path);
-                foreach (string dir in dirs)
-                    ConvertPath(dir, bConvert);
+                if (chkIncludeSubFolders.Checked)
+                {
+                    // Now we have to search the sub dirs recursively
+                    dirs = Directory.GetDirectories(path);
+                    foreach (string dir in dirs)
+                        ConvertPath(dir, bConvert);
+
+                }
             }
             catch { }
         }
