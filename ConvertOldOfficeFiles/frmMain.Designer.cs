@@ -138,13 +138,14 @@ namespace ConvertOldOfficeFiles
             this.tbOutput.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tbOutput.Font = new System.Drawing.Font("Consolas", 10.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.tbOutput.Location = new System.Drawing.Point(0, 25);
-            this.tbOutput.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.tbOutput.Margin = new System.Windows.Forms.Padding(2);
             this.tbOutput.Multiline = true;
             this.tbOutput.Name = "tbOutput";
             this.tbOutput.ReadOnly = true;
             this.tbOutput.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.tbOutput.Size = new System.Drawing.Size(927, 344);
             this.tbOutput.TabIndex = 4;
+            this.tbOutput.TextChanged += new System.EventHandler(this.tbOutput_TextChanged);
             // 
             // chkIncludeSubFolders
             // 
@@ -166,7 +167,7 @@ namespace ConvertOldOfficeFiles
             this.Controls.Add(this.toolStrip1);
             this.Controls.Add(this.statusStrip1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.Name = "frmMain";
             this.Text = "ConvertOfficeFiles";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmMain_FormClosing);

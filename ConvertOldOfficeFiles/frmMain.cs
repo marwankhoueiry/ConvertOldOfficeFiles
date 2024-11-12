@@ -42,30 +42,48 @@ namespace ConvertOldOfficeFiles
 
         private void ConvertPath (string path, bool bConvert)
         {
+
+            string donePath = path + "\\Done\\";
+            string failedPath = path + "\\Failed\\";
+            if (checkFolders(donePath, failedPath) != true)
+            {
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + " Error: Unable to create folder: " + donePath + " Or Folder: " + failedPath + ".  Existing..." + Environment.NewLine);
+                return;
+            }
+
             try
             {
                 // Search for Excel files with an old office format and convert them into the new office OpenXML format
                 string[] fileNames = Directory.GetFiles(path, "*.xls");
+
                 statusLabel.Text = path;
                 Application.DoEvents();
                 Cursor.Current = Cursors.WaitCursor;
                 foreach (string fileName in fileNames)
                 {
                     string ext = Path.GetExtension(fileName);
+                    var t = Path.GetFileNameWithoutExtension(fileName);
+                    var s = Path.GetFileName(fileName);
                     if (Path.GetExtension(fileName).ToLower() == ".xls")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
                         {
-                            tbOutput.AppendText("Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
+                            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            tbOutput.AppendText(date + "Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
                             continue;
                         }
 
-                        if (bConvert)
-                            ConvertXLS(fileName);
+                        if (bConvert) {
+                            string newPath = "C:\\OpenText\\Upload\\";
+                            var newFilename = newPath + Path.GetFileNameWithoutExtension(fileName) + ".xlsx";
+                            ConvertXLS(fileName, newFilename);
+                        } 
                         else
                         {
-                            tbOutput.AppendText(fileName + Environment.NewLine);
+                            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            tbOutput.AppendText(date + ' ' + fileName + Environment.NewLine);
                             fileCount++;
                         }
                     }
@@ -75,20 +93,49 @@ namespace ConvertOldOfficeFiles
                 fileNames = Directory.GetFiles(path, "*.doc");
                 foreach (string fileName in fileNames)
                 {
+                  
                     if (Path.GetExtension(fileName).ToLower() == ".doc")
                     {
                         // Check if the file is a file with Office 2003 format (header check)
                         if (!IsOldOfficeFormat(fileName))
                         {
-                            tbOutput.AppendText("Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
+                            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            tbOutput.AppendText(date + " Error: the file " + fileName + " has a wrong format and therefore will not be converted !" + Environment.NewLine);
                             continue;
                         }
 
-                        if (bConvert)
-                            ConvertDOC(fileName);
+                        if (bConvert) { 
+                            string newPath = "C:\\OpenText\\Upload\\";
+                            var newFilename = newPath + Path.GetFileNameWithoutExtension(fileName) + ".docx";
+                            Boolean success = ConvertDOC(fileName, newFilename);
+                      
+                            if (success)
+                            {
+                                if (File.Exists(donePath + Path.GetFileName(fileName)) == false){
+                                    File.Move(fileName, donePath + Path.GetFileName(fileName));
+                                }
+                                else
+                                {
+                                    File.Delete(fileName);  //Already proccessed - Get rid
+                                }
+
+                            } 
+                            else
+                            {
+                                if (File.Exists(failedPath + Path.GetFileName(fileName)) == false)
+                                {
+                                    File.Move(fileName, failedPath + Path.GetFileName(fileName));
+                                }
+                                else
+                                {
+                                    File.Delete(fileName);  //Already proccessed - Get rid
+                                }
+                            }
+                        }
                         else
                         {
-                            tbOutput.AppendText(fileName + Environment.NewLine);
+                            var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                            tbOutput.AppendText(date + ' ' + fileName + Environment.NewLine);
                             fileCount++;
                         }
                     }
@@ -106,8 +153,31 @@ namespace ConvertOldOfficeFiles
             }
             catch { }
         }
+        private Boolean checkFolders(string donePath, string  failedPath)
+        {
+            try
+            {
+                // Determine whether the directory exists.
+                if (Directory.Exists(donePath) == false)
+                {
+                    Directory.CreateDirectory(donePath);
+                }
+                if (Directory.Exists(failedPath) == false)
+                {
+                    Directory.CreateDirectory(failedPath);
+                }
 
-        private void ConvertXLS(string fileName)
+            }
+            catch (Exception e)
+            {
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + " Error: " + e.Message + Environment.NewLine);
+                return false;
+            }
+            finally { }
+            return true;
+        }
+        private void ConvertXLS(string fileName, string newFileName)
         {
             string saveFileName = fileName.Replace(".xls",".xlsx");
             
@@ -123,7 +193,9 @@ namespace ConvertOldOfficeFiles
                     string author = "";
                     foreach (NetOffice.OfficeApi.DocumentProperty p in properties)
                         if (p.Name == "Author")
-                            author = p.Value.ToString();
+                            if (p != null) { 
+                                author = p.Value.ToString();
+                            }
                     //MessageBox.Show(author);
 
                     // Check if the file contains macro code
@@ -136,29 +208,36 @@ namespace ConvertOldOfficeFiles
                     catch
                     {
                         // Access to VBA object model ist not trusted, see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445
-                        tbOutput.AppendText("Error converting " + fileName + ": please enable access to the VBA object model within Excel (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Error converting " + fileName + ": please enable access to the VBA object model within Excel (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
                         return;
                     }
 
                     // A file containing macros must have a different target format / file extension
                     if (linesOfCode > 0)
                     {
-                        saveFileName = fileName.Replace(".xls", ".xlsm");
-                        tbOutput.AppendText("Convert " + fileName + " to " + saveFileName + Environment.NewLine);
+
+                        saveFileName = newFileName.Replace(".xlsx", ".xlsm");
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Convert " + fileName + " to " + saveFileName + Environment.NewLine);
                         // Save in OpenXML format with macros (see https://docs.microsoft.com/de-de/office/vba/api/excel.xlfileformat)
                         wb.SaveAs(saveFileName, 52);
                     }
                     else
                     {
-                        tbOutput.AppendText("Convert " + fileName + " to " + saveFileName + Environment.NewLine);
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Convert " + fileName + " to " + saveFileName + Environment.NewLine);
                         // Save in OpenXML format without macros  (see https://docs.microsoft.com/de-de/office/vba/api/excel.xlfileformat)
-                        wb.SaveAs(saveFileName, 51);
+
+                        //wb.SaveAs(saveFileName, 51);
+                        wb.SaveAs(newFileName, 51);
                     }
                     fileCount++;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    tbOutput.AppendText(date + ex.Message);
                 }
 
                 // Cleanup
@@ -167,18 +246,21 @@ namespace ConvertOldOfficeFiles
 
                 // Reset the timestamp for "date modified" for the new created file
                 FileInfo fi = new FileInfo(fileName);
-                File.SetLastWriteTime(saveFileName, fi.LastWriteTime);
-                File.SetCreationTime(saveFileName, fi.CreationTime);
+                File.SetLastWriteTime(newFileName, fi.LastWriteTime);
+                File.SetCreationTime(newFileName, fi.CreationTime);
 
                 // Delete the source file
-                File.Delete(fileName);
+                //File.Delete(fileName);
+                File.Move(fileName, Path.GetDirectoryName(fileName) + "\\Done\\");
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + ' ' + ex.Message + Environment.NewLine);
+                //MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void ConvertDOC(string fileName)
+        private Boolean ConvertDOC(string fileName, string newFileName) 
         {
             string saveFileName = fileName.Replace(".doc", ".docx");
 
@@ -199,29 +281,37 @@ namespace ConvertOldOfficeFiles
                     catch
                     {
                         // Access to VBA object model ist not trusted, see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445
-                        tbOutput.AppendText("Error converting " + fileName + ": please enable access to the VBA object model within Word (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
-                        return;
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Error converting " + fileName + ": please enable access to the VBA object model within Word (see https://support.microsoft.com/en-us/topic/programmatic-access-to-office-vba-project-is-denied-960d5265-6592-9400-31bc-b2ddfb94b445)" + Environment.NewLine);
+                        return false;
                     }
 
                     // A file containing macros must have a different target format / file extension
                     if (linesOfCode > 0)
                     {
-                        saveFileName = fileName.Replace(".doc", ".docm");
-                        tbOutput.AppendText("Convert " + fileName + " to " + saveFileName + Environment.NewLine);
+                        saveFileName = newFileName.Replace(".docx", ".docm");
+
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Convert " + fileName + " to " + saveFileName + Environment.NewLine);
                         // Save in OpenXML format with macros (see https://docs.microsoft.com/de-de/office/vba/api/word.wdsaveformat)
                         doc.SaveAs2(saveFileName, 13);
                     }
                     else
                     {
-                        tbOutput.AppendText("Convert " + fileName + " to " + saveFileName + Environment.NewLine);
+                        var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        tbOutput.AppendText(date + " Convert " + fileName + " to " + saveFileName + Environment.NewLine);
                         // Save in OpenXML format without macros (see https://docs.microsoft.com/de-de/office/vba/api/word.wdsaveformat)
+                        saveFileName = newFileName;
                         doc.SaveAs2(saveFileName, 16);
                     }
                     fileCount++;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    tbOutput.AppendText(date + " " + ex.Message + Environment.NewLine);
+                    //MessageBox.Show(ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
                 }
 
                 // Cleanup
@@ -233,15 +323,18 @@ namespace ConvertOldOfficeFiles
                 File.SetLastWriteTime(saveFileName, fi.LastWriteTime);
                 File.SetCreationTime(saveFileName, fi.CreationTime);
 
-                // Delete the source file
-                File.Delete(fileName);
+ 
+                return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + ' ' + ex.Message + Environment.NewLine);
+                return false;
+                //MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
+ 
         private void btConvert_Click(object sender, EventArgs e)
         {
             string path = tbPath.Text.Trim();
@@ -252,7 +345,8 @@ namespace ConvertOldOfficeFiles
                 ConvertPath(path, true);
                 statusLabel.Text = "Ready";
                 Cursor.Current = Cursors.Default;
-                tbOutput.AppendText(fileCount + " files converted" + Environment.NewLine);
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + ' ' + fileCount + " files converted" + Environment.NewLine);
             }
         }
 
@@ -266,7 +360,8 @@ namespace ConvertOldOfficeFiles
                 ConvertPath(path, false);
                 statusLabel.Text = "Ready";
                 Cursor.Current = Cursors.Default;
-                tbOutput.AppendText(fileCount + " files found" + Environment.NewLine);
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + ' ' + fileCount + " files found" + Environment.NewLine);
             }
         }
 
@@ -307,7 +402,10 @@ namespace ConvertOldOfficeFiles
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var date = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                tbOutput.AppendText(date + ' ' + ex.Message + Environment.NewLine);
+
+                //MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return bIsOldFormat;
@@ -336,6 +434,11 @@ namespace ConvertOldOfficeFiles
                 }
                 catch (Exception ex) { MessageBox.Show(ex.Message, "Error while disposing Word object instance", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
+        }
+
+        private void tbOutput_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
